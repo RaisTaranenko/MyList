@@ -227,6 +227,10 @@ fun ShoppingListScreen(viewModel: ShoppingListViewModel = viewModel(
             .padding(16.dp)
     ) {
         item {
+            Text(
+                text = "Всього товарів: ${viewModel.shoppingList.size}",
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
             AddItemButton { viewModel.addItem(it) }
         }
         itemsIndexed(viewModel.shoppingList) { ix, item ->
