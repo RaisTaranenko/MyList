@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,8 +17,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.paddingFrom
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -50,6 +53,7 @@ import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Update
+import androidx.room.util.TableInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import shopping.list.ui.theme.MyListTheme
@@ -62,7 +66,7 @@ class MainActivity : ComponentActivity() {
             MyListTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     Surface(Modifier.padding(innerPadding)) {
-                        Text("Hello Android")
+                        ShoppingListScreen()
                     }
                 }
             }
@@ -79,7 +83,7 @@ data class ShoppingItem(
 
 @Dao
 interface ShoppingDao {
-    @Query("SELECT * FROM shopping_items")
+    @Query("SELECT * FROM shopping_items ORDER BY id DESC")
     fun getAllItems(): List<ShoppingItem>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -133,26 +137,13 @@ class ShoppingListViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
-//    val shoppingList = mutableStateListOf(
-//        ShoppingItem("Молоко"),
-//        ShoppingItem("Хліб"),
-//        ShoppingItem("Яйця"),
-//        ShoppingItem("Масло"),
-//        ShoppingItem("Олія"),
-//        ShoppingItem("Авокадо"),
-//        ShoppingItem("Молоко"),
-//        ShoppingItem("Хліб"),
-//        ShoppingItem("Яйця"),
-//        ShoppingItem("Масло"),
-//        ShoppingItem("Олія"),
-//        ShoppingItem("Авокадо"),
-//        ShoppingItem("Молоко"),
-//        ShoppingItem("Хліб"),
-//        ShoppingItem("Яйця"),
-//        ShoppingItem("Масло"),
-//        ShoppingItem("Олія"),
-//        ShoppingItem("Авокадо"),
-//    )
+    fun addItem(name: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val newItem = ShoppingItem(name = name)
+            dao.insertItem(newItem)
+            loadShoppingList()
+        }
+    }
 
     fun toggleBought(index: Int) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -205,16 +196,39 @@ class ShoppingListViewModelFactory(private val application: Application) :
     }
 
 @Composable
+fun AddItemButton(addItem: (String) -> Unit = {}) {
+    var text by remember { mutableStateOf("") }
+
+    Column {
+        OutlinedTextField(
+            value = text,
+            onValueChange = { text = it },
+            label = { Text("Add Item") }
+        )
+        Button(onClick = {
+            if (text.isNotEmpty()) {
+                addItem(text)
+                text = ""
+            }
+        }) {
+            Text("Add")
+        }
+    }
+}
+
+@Composable
 fun ShoppingListScreen(viewModel: ShoppingListViewModel = viewModel(
     factory = ShoppingListViewModelFactory(LocalContext.current
         .applicationContext as Application)
 )) {
-
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
+        item {
+            AddItemButton { viewModel.addItem(it) }
+        }
         itemsIndexed(viewModel.shoppingList) { ix, item ->
             ShoppingItemCard(item) {
                 viewModel.toggleBought(ix)
